@@ -1,6 +1,7 @@
 import asyncio
 import json
 import random
+from pathlib import Path
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import (
@@ -14,37 +15,51 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 TOKEN = "8719296663:AAHVbDpT3q46i8dxCtR30hg5pcpPxWnOEaI"
 ADMIN_ID = 6907865020  # <-- сюда свой ID
-bot = Bot(TOKEN)
+
+bot = Bot(TOKEN, parse_mode="Markdown")
 dp = Dispatcher()
 
+USERS_FILE = Path("users.json")
+SERVICES_FILE = Path("services.json")
 
 # ================== БАЗА ==================
-def load_users():
+def load_json(path, default):
     try:
-        with open("users.json", "r", encoding="utf-8") as f:
+        if not path.exists():
+            return default
+        with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except:
-        return {}
+        return default
 
 
-def save_users(data):
-    with open("users.json", "w", encoding="utf-8") as f:
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=4, ensure_ascii=False)
 
 
+def load_users():
+    return load_json(USERS_FILE, {})
+
+
+def save_users(data):
+    save_json(USERS_FILE, data)
+
+
 def load_services():
-    try:
-        with open("services.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
+    return load_json(SERVICES_FILE, [])
+
+
+def save_services(data):
+    save_json(SERVICES_FILE, data)
 
 
 def get_user(user_id, username):
     users = load_users()
+    uid = str(user_id)
 
-    if str(user_id) not in users:
-        users[str(user_id)] = {
+    if uid not in users:
+        users[uid] = {
             "username": username or "NoName",
             "balance": 0,
             "purchases": [],
@@ -52,23 +67,27 @@ def get_user(user_id, username):
         }
         save_users(users)
 
-    return users[str(user_id)]
+    return users[uid]
 
 
 # ================== UI ==================
 async def edit_screen(callback: CallbackQuery, image, text, kb):
-    """Редактирование одного сообщения (картинка + текст + кнопки)"""
     try:
         await callback.message.edit_media(
             media=InputMediaPhoto(
                 media=FSInputFile(image),
-                caption=text,
-                parse_mode="Markdown"
+                caption=text
             ),
             reply_markup=kb
         )
     except Exception as e:
-        print("edit_media error:", e)
+        print("edit_screen error:", e)
+
+    await callback.answer()
+
+
+async def simple_page(callback, image, text):
+    await edit_screen(callback, image, text, back_kb())
 
 
 # ================== КНОПКИ ==================
@@ -76,17 +95,14 @@ def main_menu_kb(user, is_admin=False):
     kb = InlineKeyboardBuilder()
 
     kb.button(text=f"💰Баланс: {user['balance']}", callback_data="balance")
-
     kb.button(text="🏦 Купить", callback_data="buy")
     kb.button(text="🛟 Поддержка", callback_data="support")
 
+    kb.button(text="📟 Промокоды", callback_data="promo")
+    kb.button(text="📑 Инфо", callback_data="info")
+
     if user["purchases"]:
-        kb.button(text="📟 Промокоды", callback_data="promo")
         kb.button(text="🧰 Покупки", callback_data="my_purchases")
-        kb.button(text="📑 Инфо", callback_data="info")
-    else:
-        kb.button(text="📟 Промокоды", callback_data="promo")
-        kb.button(text="📑 Инфо", callback_data="info")
 
     if is_admin:
         kb.button(text="➕ Добавить услугу", callback_data="add_service")
@@ -103,16 +119,13 @@ def services_kb(services):
 
     kb.button(text="⬅ Назад", callback_data="back")
     kb.adjust(1)
-
     return kb.as_markup()
 
 
 def service_action_kb(service_id):
     kb = InlineKeyboardBuilder()
-
     kb.button(text="Купить", callback_data=f"buy_{service_id}")
     kb.button(text="⬅ Назад", callback_data="buy")
-
     kb.adjust(1)
     return kb.as_markup()
 
@@ -129,8 +142,8 @@ async def start(msg: Message):
     user = get_user(msg.from_user.id, msg.from_user.username)
 
     text = (
-        f"👤 «{user['username']}»\n\n"
-        f"🪎 «{'У вас нет покупок' if not user['purchases'] else 'Есть покупки'}»\n\n"
+        f"👤 *{user['username']}*\n\n"
+        f"🪎 {'Нет покупок' if not user['purchases'] else 'Есть покупки'}\n\n"
         f"Выберите действие:"
     )
 
@@ -147,8 +160,8 @@ async def back(callback: CallbackQuery):
     user = get_user(callback.from_user.id, callback.from_user.username)
 
     text = (
-        f"👤 «{user['username']}»\n\n"
-        f"🪎 «{'У вас нет покупок' if not user['purchases'] else 'Есть покупки'}»\n\n"
+        f"👤 *{user['username']}*\n\n"
+        f"🪎 {'Нет покупок' if not user['purchases'] else 'Есть покупки'}\n\n"
         f"Выберите действие:"
     )
 
@@ -165,17 +178,15 @@ async def back(callback: CallbackQuery):
 async def buy(callback: CallbackQuery):
     services = load_services()
 
-    text = "Выберите услугу:\n\n"
+    if not services:
+        return await callback.answer("Нет услуг", show_alert=True)
+
+    text = "*Выберите услугу:*\n\n"
 
     for s in services:
-        text += f"*_{s['name']}_* — {s['description']}, {s['price']}₽\n"
+        text += f"*{s['name']}* — {s['price']}₽\n_{s['description']}_\n\n"
 
-    await edit_screen(
-        callback,
-        "images/pay.png",
-        text,
-        services_kb(services)
-    )
+    await edit_screen(callback, "images/pay.png", text, services_kb(services))
 
 
 # ================== ПРОСМОТР УСЛУГИ ==================
@@ -184,13 +195,14 @@ async def service_view(callback: CallbackQuery):
     service_id = int(callback.data.split("_")[1])
     services = load_services()
 
-    service = next(s for s in services if s["id"] == service_id)
+    service = next((s for s in services if s["id"] == service_id), None)
+    if not service:
+        return await callback.answer("Услуга не найдена", show_alert=True)
 
     text = (
-        f"📟 {service['name']}\n\n"
-        f"Описание: «{service['description']}»\n\n"
-        f"Цена: {service['price']}₽\n\n"
-        f"Выберите действие:"
+        f"*{service['name']}*\n\n"
+        f"{service['description']}\n\n"
+        f"💰 {service['price']}₽"
     )
 
     await edit_screen(
@@ -209,24 +221,32 @@ async def purchase(callback: CallbackQuery):
     users = load_users()
     services = load_services()
 
-    user = users[str(callback.from_user.id)]
-    service = next(s for s in services if s["id"] == service_id)
+    uid = str(callback.from_user.id)
 
-    if user["balance"] >= service["price"]:
-        user["balance"] -= service["price"]
-        user["purchases"].append(service["name"])
-        user["transactions"].append(f"-{service['price']} ({service['name']})")
+    if uid not in users:
+        return await callback.answer("Ошибка пользователя", show_alert=True)
 
-        save_users(users)
+    user = users[uid]
+    service = next((s for s in services if s["id"] == service_id), None)
 
-        await edit_screen(
-            callback,
-            "images/pay.png",
-            f"✅ Покупка успешна!\n\n{service['content']}",
-            back_kb()
-        )
-    else:
-        await callback.answer("Недостаточно средств", show_alert=True)
+    if not service:
+        return await callback.answer("Услуга не найдена", show_alert=True)
+
+    if user["balance"] < service["price"]:
+        return await callback.answer("Недостаточно средств", show_alert=True)
+
+    user["balance"] -= service["price"]
+    user["purchases"].append(service["name"])
+    user["transactions"].append(f"-{service['price']} ({service['name']})")
+
+    save_users(users)
+
+    await edit_screen(
+        callback,
+        "images/pay.png",
+        f"✅ *Покупка успешна!*\n\n{service['content']}",
+        back_kb()
+    )
 
 
 # ================== БАЛАНС ==================
@@ -234,13 +254,11 @@ async def purchase(callback: CallbackQuery):
 async def balance(callback: CallbackQuery):
     user = get_user(callback.from_user.id, callback.from_user.username)
 
-    last = user["transactions"][-3:] if user["transactions"] else ["у вас нету транзакций"]
+    last = user["transactions"][-3:] or ["Нет транзакций"]
 
     text = (
-        f"Ваш аккаунт: {user['username']}\n"
-        f"Баланс: {user['balance']}₽\n\n"
-        f"Последние транзакции: «{', '.join(last)}»\n\n"
-        f"Выберите способ пополнения:"
+        f"*Баланс:* {user['balance']}₽\n\n"
+        f"*История:*\n" + "\n".join(last)
     )
 
     kb = InlineKeyboardBuilder()
@@ -248,12 +266,7 @@ async def balance(callback: CallbackQuery):
     kb.button(text="⬅ Назад", callback_data="back")
     kb.adjust(1)
 
-    await edit_screen(
-        callback,
-        "images/balance.png",
-        text,
-        kb.as_markup()
-    )
+    await edit_screen(callback, "images/balance.png", text, kb.as_markup())
 
 
 # ================== ПОПОЛНЕНИЕ ==================
@@ -261,69 +274,53 @@ async def balance(callback: CallbackQuery):
 async def card(callback: CallbackQuery):
     code = random.randint(100000, 999999)
 
-    text = f"Ожидаем пополнение.\n\nОтправьте код:\n\n{code}"
+    text = f"*Ожидаем оплату*\n\nКод:\n`{code}`"
 
-    await edit_screen(
-        callback,
-        "images/balance.png",
-        text,
-        back_kb()
-    )
+    await edit_screen(callback, "images/balance.png", text, back_kb())
 
 
-# --- FSM state (простая переменная) ---
-adding_service = {}
-
-# --- support ---
+# ================== СТРАНИЦЫ ==================
 @dp.callback_query(F.data == "support")
 async def support(callback: CallbackQuery):
-    text = "🛟 Поддержка:\n\nНапишите сюда: @yagram_sup_bot"
-
-    await callback.message.edit_media(
-        media=FSInputFile("images/support.png"),
-        reply_markup=back_kb()
+    await simple_page(
+        callback,
+        "images/support.png",
+        "🛟 *Поддержка*\n\n@your_support"
     )
-    await callback.message.edit_caption(text)
 
-# --- info ---
+
 @dp.callback_query(F.data == "info")
 async def info(callback: CallbackQuery):
-    text = "📑 Информация:\n\nТут будет ваш текст (замени на нужный)."
-
-    await callback.message.edit_media(
-        media=FSInputFile("images/info.png"),
-        reply_markup=back_kb()
+    await simple_page(
+        callback,
+        "images/info.png",
+        "📑 *Информация*\n\nВаш текст"
     )
-    await callback.message.edit_caption(text)
 
-# --- promo ---
+
 @dp.callback_query(F.data == "promo")
 async def promo(callback: CallbackQuery):
-    text = "📟 Промокоды\n\nРаздел временно недоступен."
-
-    await callback.message.edit_media(
-        media=FSInputFile("images/promo.png"),
-        reply_markup=back_kb()
+    await simple_page(
+        callback,
+        "images/promo.png",
+        "📟 *Промокоды*\n\nСкоро..."
     )
-    await callback.message.edit_caption(text)
 
-# --- purchases ---
+
 @dp.callback_query(F.data == "my_purchases")
 async def my_purchases(callback: CallbackQuery):
     user = get_user(callback.from_user.id, callback.from_user.username)
 
-    if user["purchases"]:
-        text = "🧰 Ваши покупки:\n\n" + "\n".join(user["purchases"])
-    else:
-        text = "🧰 У вас нет покупок"
+    text = "*Ваши покупки:*\n\n"
+    text += "\n".join(user["purchases"]) if user["purchases"] else "Пусто"
 
-    await callback.message.edit_media(
-        media=FSInputFile("images/purchases.png"),
-        reply_markup=back_kb()
-    )
-    await callback.message.edit_caption(text)
+    await simple_page(callback, "images/purchases.png", text)
 
-# --- add service (admin) ---
+
+# ================== АДМИН ==================
+adding_service = {}
+
+
 @dp.callback_query(F.data == "add_service")
 async def add_service(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
@@ -331,19 +328,12 @@ async def add_service(callback: CallbackQuery):
 
     adding_service[callback.from_user.id] = True
 
-    await callback.message.edit_caption(
-        "➕ Отправьте услугу в формате JSON:\n\n"
-        '{\n'
-        '  "id": 1,\n'
-        '  "name": "Название",\n'
-        '  "description": "Описание",\n'
-        '  "price": 100,\n'
-        '  "content": "Что получит пользователь"\n'
-        '}',
+    await callback.message.answer(
+        "Отправь JSON услуги",
         reply_markup=back_kb()
     )
 
-# --- receive service JSON ---
+
 @dp.message()
 async def handle_service_json(msg: Message):
     if msg.from_user.id not in adding_service:
@@ -354,16 +344,14 @@ async def handle_service_json(msg: Message):
 
         services = load_services()
         services.append(data)
-
-        with open("services.json", "w", encoding="utf-8") as f:
-            json.dump(services, f, indent=4, ensure_ascii=False)
+        save_services(services)
 
         del adding_service[msg.from_user.id]
 
-        await msg.answer("✅ Услуга добавлена", reply_markup=back_kb())
+        await msg.answer("✅ Услуга добавлена")
 
     except Exception as e:
-        await msg.answer(f"❌ Ошибка JSON:\n{e}")
+        await msg.answer(f"Ошибка JSON:\n{e}")
 
 
 # ================== RUN ==================
