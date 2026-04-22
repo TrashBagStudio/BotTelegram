@@ -101,7 +101,7 @@ def main_menu_kb(user, is_admin=False):
 
     kb.button(text=f"💰Баланс: {user['balance']}", callback_data="balance")
     kb.button(text="🏦 Купить", callback_data="buy")
-    kb.button(text="🛟 Поддержка", callback_data="support")
+    kb.button(text="🛟 Поддержка", callback_data="sup")
 
     kb.button(text="📟 Промокоды", callback_data="promo")
     kb.button(text="📑 Инфо", callback_data="info")
@@ -281,8 +281,8 @@ async def card(callback: CallbackQuery):
 
 
 # ================== PAGES ==================
-@dp.callback_query(F.data == "support")
-async def support(callback: CallbackQuery):
+@dp.callback_query(F.data == "sup")
+async def sup(callback: CallbackQuery):
     await simple_page(callback, "images/main.png",
                       "🛟 *Поддержка*\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\n@your_support")
 
