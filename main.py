@@ -290,7 +290,7 @@ async def sup(callback: CallbackQuery):
 @dp.callback_query(F.data == "info")
 async def info(callback: CallbackQuery):
     await simple_page(callback, "images/info.png",
-                      "📑 *Информация*\n\nВаш текст")
+                      "📑 *Информация*\n\nYandexGram (@yagram-bot)\nПродажа аккаунтов Yandex через удобного Telegram-бота.\n\nПеред использованием обязательно ознакомьтесь с документами:\n\n📄 Политика конфиденциальности:\nhttps://telegra.ph/Politika-konfidencialnosti-04-22-42\n\n📄 Пользовательское соглашение:\nhttps://telegra.ph/Polzovatelskoe-soglashenie-04-22-22\n\nПродолжая использование бота, вы подтверждаете согласие с условиями.\n\nПоддержка: @yagram_support")
 
 
 @dp.callback_query(F.data == "promo")
