@@ -284,13 +284,13 @@ async def card(callback: CallbackQuery):
 @dp.callback_query(F.data == "sup")
 async def sup(callback: CallbackQuery):
     await simple_page(callback, "images/support.png",
-                      f"🛟 *Поддержка*\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\n@yoursupport")
+                      f"🛟 *Поддержка*\n\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\n\n@yagram_support")
 
 
 @dp.callback_query(F.data == "info")
 async def info(callback: CallbackQuery):
     await simple_page(callback, "images/info.png",
-                      "📑 *Информация*\n\nYandexGram (@yagram-bot)\nПродажа аккаунтов Yandex через удобного Telegram-бота.\n\nПеред использованием обязательно ознакомьтесь с документами:\n\n📄 Политика конфиденциальности:\nhttps://telegra.ph/Politika-konfidencialnosti-04-22-42\n\n📄 Пользовательское соглашение:\nhttps://telegra.ph/Polzovatelskoe-soglashenie-04-22-22\n\nПродолжая использование бота, вы подтверждаете согласие с условиями.\n\nПоддержка: @yagram_support")
+                      f"📑 *Информация*\n\nYandexGram (@yagram-bot)\nПродажа аккаунтов Yandex через удобного Telegram-бота.\n\nПеред использованием обязательно ознакомьтесь с документами:\n\n📄 Политика конфиденциальности:\nhttps://telegra.ph/Politika-konfidencialnosti-04-22-42\n\n📄 Пользовательское соглашение:\nhttps://telegra.ph/Polzovatelskoe-soglashenie-04-22-22\n\nПродолжая использование бота, вы подтверждаете согласие с условиями.\n\nПоддержка: @yagram_support")
 
 
 @dp.callback_query(F.data == "promo")
