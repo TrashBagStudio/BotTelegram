@@ -283,8 +283,8 @@ async def card(callback: CallbackQuery):
 # ================== PAGES ==================
 @dp.callback_query(F.data == "sup")
 async def sup(callback: CallbackQuery):
-    await simple_page(callback, "images/main.png",
-                      f"🛟 *Поддержка*\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\nyoursupport")
+    await simple_page(callback, "images/support.png",
+                      f"🛟 *Поддержка*\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\n@yoursupport")
 
 
 @dp.callback_query(F.data == "info")
