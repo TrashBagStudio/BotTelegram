@@ -271,10 +271,99 @@ async def card(callback: CallbackQuery):
     )
 
 
-# ================== ЗАГЛУШКИ ==================
-@dp.callback_query(F.data.in_(["support", "promo", "info", "my_purchases", "add_service"]))
-async def stubs(callback: CallbackQuery):
-    await callback.answer("Раздел в разработке")
+# --- FSM state (простая переменная) ---
+adding_service = {}
+
+# --- support ---
+@dp.callback_query(F.data == "support")
+async def support(callback: CallbackQuery):
+    text = "🛟 Поддержка:\n\nНапишите сюда: @yagram_sup_bot"
+
+    await callback.message.edit_media(
+        media=FSInputFile("images/support.png"),
+        reply_markup=back_kb()
+    )
+    await callback.message.edit_caption(text)
+
+# --- info ---
+@dp.callback_query(F.data == "info")
+async def info(callback: CallbackQuery):
+    text = "📑 Информация:\n\nТут будет ваш текст (замени на нужный)."
+
+    await callback.message.edit_media(
+        media=FSInputFile("images/info.png"),
+        reply_markup=back_kb()
+    )
+    await callback.message.edit_caption(text)
+
+# --- promo ---
+@dp.callback_query(F.data == "promo")
+async def promo(callback: CallbackQuery):
+    text = "📟 Промокоды\n\nРаздел временно недоступен."
+
+    await callback.message.edit_media(
+        media=FSInputFile("images/promo.png"),
+        reply_markup=back_kb()
+    )
+    await callback.message.edit_caption(text)
+
+# --- purchases ---
+@dp.callback_query(F.data == "my_purchases")
+async def my_purchases(callback: CallbackQuery):
+    user = get_user(callback.from_user.id, callback.from_user.username)
+
+    if user["purchases"]:
+        text = "🧰 Ваши покупки:\n\n" + "\n".join(user["purchases"])
+    else:
+        text = "🧰 У вас нет покупок"
+
+    await callback.message.edit_media(
+        media=FSInputFile("images/purchases.png"),
+        reply_markup=back_kb()
+    )
+    await callback.message.edit_caption(text)
+
+# --- add service (admin) ---
+@dp.callback_query(F.data == "add_service")
+async def add_service(callback: CallbackQuery):
+    if callback.from_user.id != ADMIN_ID:
+        return await callback.answer("Нет доступа", show_alert=True)
+
+    adding_service[callback.from_user.id] = True
+
+    await callback.message.edit_caption(
+        "➕ Отправьте услугу в формате JSON:\n\n"
+        '{\n'
+        '  "id": 1,\n'
+        '  "name": "Название",\n'
+        '  "description": "Описание",\n'
+        '  "price": 100,\n'
+        '  "content": "Что получит пользователь"\n'
+        '}',
+        reply_markup=back_kb()
+    )
+
+# --- receive service JSON ---
+@dp.message()
+async def handle_service_json(msg: Message):
+    if msg.from_user.id not in adding_service:
+        return
+
+    try:
+        data = json.loads(msg.text)
+
+        services = load_services()
+        services.append(data)
+
+        with open("services.json", "w", encoding="utf-8") as f:
+            json.dump(services, f, indent=4, ensure_ascii=False)
+
+        del adding_service[msg.from_user.id]
+
+        await msg.answer("✅ Услуга добавлена", reply_markup=back_kb())
+
+    except Exception as e:
+        await msg.answer(f"❌ Ошибка JSON:\n{e}")
 
 
 # ================== RUN ==================
