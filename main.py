@@ -284,7 +284,7 @@ async def card(callback: CallbackQuery):
 @dp.callback_query(F.data == "sup")
 async def sup(callback: CallbackQuery):
     await simple_page(callback, "images/support.png",
-                      f"🛟 *Поддержка*\n\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\n\n@yagram_support")
+                      f"🛟 *Поддержка*\n\nЕсли у вас возникли проблемы или есть вопросы обратитесь в нашу поддержку:\n\n@yagramsupport")
 
 
 @dp.callback_query(F.data == "info")
