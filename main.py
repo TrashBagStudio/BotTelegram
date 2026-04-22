@@ -12,11 +12,16 @@ from aiogram.types import (
 )
 from aiogram.filters import CommandStart
 from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.client.default import DefaultBotProperties
 
 TOKEN = "8719296663:AAHVbDpT3q46i8dxCtR30hg5pcpPxWnOEaI"
 ADMIN_ID = 6907865020  # <-- сюда свой ID
 
-bot = Bot(TOKEN, parse_mode="Markdown")
+bot = Bot(
+    TOKEN,
+    default=DefaultBotProperties(parse_mode="Markdown")
+)
+
 dp = Dispatcher()
 
 USERS_FILE = Path("users.json")
@@ -154,7 +159,7 @@ async def start(msg: Message):
     )
 
 
-# ================== НАЗАД ==================
+# ================== BACK ==================
 @dp.callback_query(F.data == "back")
 async def back(callback: CallbackQuery):
     user = get_user(callback.from_user.id, callback.from_user.username)
@@ -173,7 +178,7 @@ async def back(callback: CallbackQuery):
     )
 
 
-# ================== КУПИТЬ ==================
+# ================== BUY ==================
 @dp.callback_query(F.data == "buy")
 async def buy(callback: CallbackQuery):
     services = load_services()
@@ -189,7 +194,7 @@ async def buy(callback: CallbackQuery):
     await edit_screen(callback, "images/pay.png", text, services_kb(services))
 
 
-# ================== ПРОСМОТР УСЛУГИ ==================
+# ================== VIEW SERVICE ==================
 @dp.callback_query(F.data.startswith("service_"))
 async def service_view(callback: CallbackQuery):
     service_id = int(callback.data.split("_")[1])
@@ -205,15 +210,11 @@ async def service_view(callback: CallbackQuery):
         f"💰 {service['price']}₽"
     )
 
-    await edit_screen(
-        callback,
-        "images/pay.png",
-        text,
-        service_action_kb(service_id)
-    )
+    await edit_screen(callback, "images/pay.png", text,
+                      service_action_kb(service_id))
 
 
-# ================== ПОКУПКА ==================
+# ================== PURCHASE ==================
 @dp.callback_query(F.data.startswith("buy_"))
 async def purchase(callback: CallbackQuery):
     service_id = int(callback.data.split("_")[1])
@@ -249,7 +250,7 @@ async def purchase(callback: CallbackQuery):
     )
 
 
-# ================== БАЛАНС ==================
+# ================== BALANCE ==================
 @dp.callback_query(F.data == "balance")
 async def balance(callback: CallbackQuery):
     user = get_user(callback.from_user.id, callback.from_user.username)
@@ -269,7 +270,7 @@ async def balance(callback: CallbackQuery):
     await edit_screen(callback, "images/balance.png", text, kb.as_markup())
 
 
-# ================== ПОПОЛНЕНИЕ ==================
+# ================== CARD ==================
 @dp.callback_query(F.data == "card")
 async def card(callback: CallbackQuery):
     code = random.randint(100000, 999999)
@@ -279,32 +280,23 @@ async def card(callback: CallbackQuery):
     await edit_screen(callback, "images/balance.png", text, back_kb())
 
 
-# ================== СТРАНИЦЫ ==================
+# ================== PAGES ==================
 @dp.callback_query(F.data == "support")
 async def support(callback: CallbackQuery):
-    await simple_page(
-        callback,
-        "images/support.png",
-        "🛟 *Поддержка*\n\n@your_support"
-    )
+    await simple_page(callback, "images/support.png",
+                      "🛟 *Поддержка*\n\n@your_support")
 
 
 @dp.callback_query(F.data == "info")
 async def info(callback: CallbackQuery):
-    await simple_page(
-        callback,
-        "images/info.png",
-        "📑 *Информация*\n\nВаш текст"
-    )
+    await simple_page(callback, "images/info.png",
+                      "📑 *Информация*\n\nВаш текст")
 
 
 @dp.callback_query(F.data == "promo")
 async def promo(callback: CallbackQuery):
-    await simple_page(
-        callback,
-        "images/promo.png",
-        "📟 *Промокоды*\n\nСкоро..."
-    )
+    await simple_page(callback, "images/promo.png",
+                      "📟 *Промокоды*\n\nСкоро...")
 
 
 @dp.callback_query(F.data == "my_purchases")
@@ -315,43 +307,6 @@ async def my_purchases(callback: CallbackQuery):
     text += "\n".join(user["purchases"]) if user["purchases"] else "Пусто"
 
     await simple_page(callback, "images/purchases.png", text)
-
-
-# ================== АДМИН ==================
-adding_service = {}
-
-
-@dp.callback_query(F.data == "add_service")
-async def add_service(callback: CallbackQuery):
-    if callback.from_user.id != ADMIN_ID:
-        return await callback.answer("Нет доступа", show_alert=True)
-
-    adding_service[callback.from_user.id] = True
-
-    await callback.message.answer(
-        "Отправь JSON услуги",
-        reply_markup=back_kb()
-    )
-
-
-@dp.message()
-async def handle_service_json(msg: Message):
-    if msg.from_user.id not in adding_service:
-        return
-
-    try:
-        data = json.loads(msg.text)
-
-        services = load_services()
-        services.append(data)
-        save_services(services)
-
-        del adding_service[msg.from_user.id]
-
-        await msg.answer("✅ Услуга добавлена")
-
-    except Exception as e:
-        await msg.answer(f"Ошибка JSON:\n{e}")
 
 
 # ================== RUN ==================
