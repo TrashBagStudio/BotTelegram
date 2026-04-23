@@ -275,7 +275,7 @@ async def balance(callback: CallbackQuery):
 async def card(callback: CallbackQuery):
     code = random.randint(100000, 999999)
 
-    text = f"Для пополнения аккаунта напишите менеджеру, сообщение должно содержать:\n\n- Сумма пополнения\n- Код ниже*Ожидаем оплату*\n\nКод:\n`{code}`"
+    text = f"Для пополнения аккаунта напишите менеджеру, сообщение должно содержать:\n\n- Сумма пополнения\n- Код ниже\n\n*Ожидаем оплату*\n\nКод:\n`{code}`"
 
     await edit_screen(callback, "images/balance.png", text, back_kb())
 
